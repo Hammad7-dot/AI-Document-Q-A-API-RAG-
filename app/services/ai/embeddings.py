@@ -1,7 +1,7 @@
 """Embedding provider abstraction (OpenAI default, Ollama optional)."""
 from abc import ABC, abstractmethod
 
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from tenacity import retry, stop_after_attempt, wait_exponential
 

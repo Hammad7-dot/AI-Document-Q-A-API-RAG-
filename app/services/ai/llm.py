@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 
-from langchain_community.chat_models import ChatOllama
+from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential

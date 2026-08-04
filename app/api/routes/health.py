@@ -1,8 +1,9 @@
 """Health check endpoint."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.rate_limit import RATE_LIMIT, limiter
 from app.db.session import get_db
 from app.services.cache_service import get_redis
 
@@ -10,7 +11,8 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
-async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
+@limiter.limit(RATE_LIMIT)
+async def health_check(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
     """Report liveness of the API and its core dependencies."""
     db_ok = True
     redis_ok = True

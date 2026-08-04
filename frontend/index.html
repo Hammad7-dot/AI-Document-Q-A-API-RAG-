@@ -516,11 +516,43 @@
       const data = await api('/documents?page=1&page_size=100');
       state.documents = data.items || [];
       renderDocs();
+      state.documents.forEach(doc => {
+        if (doc.status === 'uploaded' || doc.status === 'processing') pollDocument(doc.id);
+      });
     } catch(e){
       toast('Could not load documents: ' + e.message, 'error');
       state.documents = [];
       renderDocs();
     }
+  }
+
+  // Upload/processing runs in the background on the server; poll until the
+  // document leaves the uploaded/processing states instead of assuming it's
+  // done when the upload request returns.
+  const activePolls = new Set();
+  function pollDocument(docId){
+    if (activePolls.has(docId)) return;
+    activePolls.add(docId);
+    const tick = async () => {
+      let doc;
+      try {
+        doc = await api(`/documents/${docId}`);
+      } catch(e){
+        activePolls.delete(docId);
+        return;
+      }
+      const idx = state.documents.findIndex(d => d.id === docId);
+      if (idx !== -1) { state.documents[idx] = doc; renderDocs(); }
+      if (doc.status === 'uploaded' || doc.status === 'processing') {
+        setTimeout(tick, 2500);
+      } else {
+        activePolls.delete(docId);
+        const name = doc.filename || doc.name || 'Document';
+        if (doc.status === 'ready') toast(name + ' is ready', 'success');
+        else if (doc.status === 'failed') toast(name + ' failed to process', 'error');
+      }
+    };
+    setTimeout(tick, 2500);
   }
 
   function statusMeta(status){
@@ -616,7 +648,8 @@
       const doc = await res.json();
       state.documents.unshift(doc);
       renderDocs();
-      toast('Uploaded ' + file.name, 'success');
+      toast('Uploaded ' + file.name + ', processing…', 'info');
+      pollDocument(doc.id);
     } catch(e){ toast('Upload failed: ' + e.message, 'error'); }
     finally { $('dropLabel').innerHTML = dropLabelDefault; fileInput.value=''; }
   }

@@ -3,12 +3,13 @@ import os
 import uuid
 from uuid import UUID
 
-from fastapi import UploadFile
+from fastapi import BackgroundTasks, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import NotFoundError, ValidationAppError
 from app.core.logging import get_logger
+from app.db.session import AsyncSessionLocal
 from app.models.document import Document, DocumentChunk, DocumentStatus
 from app.repositories.document_repository import DocumentRepository
 from app.services.ai.embeddings import EmbeddingProvider, get_embedding_provider
@@ -34,7 +35,19 @@ class DocumentService:
         self._embeddings = embedding_provider or get_embedding_provider()
         self._cache = cache or CacheService()
 
-    async def upload_and_process(self, owner_id: UUID, file: UploadFile) -> Document:
+    async def upload_and_process(
+        self, owner_id: UUID, file: UploadFile, background_tasks: BackgroundTasks
+    ) -> Document:
+        """Save the upload and return immediately; parsing/embedding runs in the background.
+
+        Document processing (PDF extraction, chunking, and embedding calls to the
+        provider API) can take minutes for large files. Running it inline would hold
+        the HTTP connection open for that whole time, risking gateway/proxy timeouts
+        and leaving the client with no feedback. Instead the document is created with
+        status=uploaded and handed to a background task; the frontend polls
+        GET /documents/{id} (or the list endpoint) to observe uploaded -> processing
+        -> ready/failed.
+        """
         self._validate_file(file)
 
         os.makedirs(settings.upload_dir, exist_ok=True)
@@ -59,17 +72,7 @@ class DocumentService:
         )
         await self._session.commit()
 
-        document_id = document.id
-        try:
-            await self._process_document(document)
-        except Exception as exc:  # noqa: BLE001
-            logger.error("document_processing_failed", document_id=str(document_id), error=str(exc))
-            await self._session.rollback()
-            await self._repo.update_status(document, DocumentStatus.FAILED, str(exc))
-            await self._session.commit()
-            raise
-
-        await self._session.refresh(document)
+        background_tasks.add_task(process_document_background, document.id, owner_id)
         return document
 
     async def _process_document(self, document: Document) -> None:
@@ -123,3 +126,25 @@ class DocumentService:
             raise ValidationAppError("Only PDF files are supported")
         if not file.filename or not file.filename.lower().endswith(".pdf"):
             raise ValidationAppError("File must have a .pdf extension")
+
+
+async def process_document_background(document_id: UUID, owner_id: UUID) -> None:
+    """Entry point run by FastAPI's BackgroundTasks after the upload response is sent.
+
+    Uses its own database session rather than the request-scoped one, since the
+    request's session is closed once the response finishes and background tasks
+    must not depend on it still being open.
+    """
+    async with AsyncSessionLocal() as session:
+        service = DocumentService(session)
+        document = await service._repo.get_by_id(document_id, owner_id)
+        if document is None:
+            logger.error("document_not_found_for_background_processing", document_id=str(document_id))
+            return
+        try:
+            await service._process_document(document)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("document_processing_failed", document_id=str(document_id), error=str(exc))
+            await session.rollback()
+            await service._repo.update_status(document, DocumentStatus.FAILED, str(exc))
+            await session.commit()

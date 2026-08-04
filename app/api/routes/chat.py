@@ -1,11 +1,12 @@
 """Chat endpoints: ask a question (JSON or SSE streaming) and view history."""
 import json
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.rate_limit import RATE_LIMIT, limiter
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.chat import (
@@ -21,7 +22,9 @@ router = APIRouter(tags=["chat"])
 
 
 @router.post("/chat", response_model=None)
+@limiter.limit(RATE_LIMIT)
 async def chat(
+    request: Request,
     payload: ChatRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -50,7 +53,9 @@ async def _sse_stream(service: ChatService, owner_id, payload: ChatRequest):
 
 
 @router.get("/chat/history", response_model=ChatHistoryResponse)
+@limiter.limit(RATE_LIMIT)
 async def chat_history(
+    request: Request,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -65,7 +70,9 @@ async def chat_history(
 
 
 @router.get("/chat/{chat_id}/messages", response_model=ChatMessagesResponse)
+@limiter.limit(RATE_LIMIT)
 async def chat_messages(
+    request: Request,
     chat_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

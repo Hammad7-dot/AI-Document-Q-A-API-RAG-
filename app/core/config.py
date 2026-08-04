@@ -1,8 +1,11 @@
 """Application configuration loaded from environment variables."""
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
+
+DEFAULT_JWT_SECRET_KEY = "change-me"
 
 
 class Settings(BaseSettings):
@@ -16,7 +19,7 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # Security
-    jwt_secret_key: str = "change-me"
+    jwt_secret_key: str = DEFAULT_JWT_SECRET_KEY
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
@@ -122,6 +125,27 @@ class Settings(BaseSettings):
             # Local/dev/docker-compose Postgres typically has no TLS listener at all.
             return {}
         return {"ssl": True}
+
+    @model_validator(mode="after")
+    def _reject_default_secret_in_production(self) -> "Settings":
+        if self.environment != "production":
+            return self
+        # Catch both the Settings class default and the .env.example placeholder
+        # verbatim, plus anything too short to be a real generated secret - not
+        # just one hardcoded string, since a copy-pasted example file is exactly
+        # the case this is meant to catch.
+        is_known_placeholder = self.jwt_secret_key in {
+            DEFAULT_JWT_SECRET_KEY,
+            "change-me-to-a-random-secret",
+        }
+        if is_known_placeholder or len(self.jwt_secret_key) < 32:
+            raise ValueError(
+                "JWT_SECRET_KEY looks like a placeholder or is too short while "
+                "ENVIRONMENT=production. Set a real random secret (e.g. "
+                "`openssl rand -hex 32`) before deploying to production - tokens "
+                "signed with a weak or known secret can be forged by anyone."
+            )
+        return self
 
 
 @lru_cache

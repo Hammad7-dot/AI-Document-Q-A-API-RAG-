@@ -11,6 +11,7 @@ engine = create_async_engine(
     pool_size=10,
     max_overflow=20,
     echo=settings.debug,
+    connect_args=settings.asyncpg_connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(

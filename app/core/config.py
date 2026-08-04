@@ -2,6 +2,7 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
@@ -61,7 +62,8 @@ class Settings(BaseSettings):
 
     @property
     def async_database_url(self) -> str:
-        """Return database_url guaranteed to use the asyncpg driver.
+        """Return database_url guaranteed to use the asyncpg driver, with any
+        psycopg2-only query parameters stripped.
 
         Most managed Postgres providers (Render, Railway, Supabase, Neon, Heroku, ...)
         hand out a plain `postgresql://` or `postgres://` connection string. SQLAlchemy
@@ -71,13 +73,46 @@ class Settings(BaseSettings):
         async engine (asyncpg) is fully configured. Normalize the scheme here so any
         plain Postgres URL works without the operator needing to remember to add
         `+asyncpg` by hand.
+
+        Providers also frequently append `?sslmode=require` (a libpq/psycopg2 keyword
+        argument) to the URL. SQLAlchemy forwards unrecognized query parameters
+        straight through as keyword arguments to the driver's connect() call, and
+        asyncpg's connect() has no `sslmode` parameter (it uses `ssl` instead), so this
+        raises `TypeError: connect() got an unexpected keyword argument 'sslmode'`.
+        Strip it here; use `asyncpg_connect_args` to get the equivalent `ssl=True`
+        passed correctly via `connect_args` instead.
         """
         url = self.database_url
         if url.startswith("postgres://"):
             url = "postgresql://" + url[len("postgres://"):]
         if url.startswith("postgresql://"):
             url = "postgresql+asyncpg://" + url[len("postgresql://"):]
-        return url
+
+        parsed = make_url(url)
+        query = dict(parsed.query)
+        # psycopg2/libpq-only keyword args that asyncpg's connect() does not accept.
+        query.pop("sslmode", None)
+        query.pop("channel_binding", None)
+        parsed = parsed.set(query=query)
+        return parsed.render_as_string(hide_password=False)
+
+    @property
+    def asyncpg_connect_args(self) -> dict:
+        """Extra kwargs for create_async_engine(..., connect_args=...).
+
+        Translates a stripped `sslmode` from the original database_url into the
+        `ssl` kwarg asyncpg actually understands. Defaults to requiring SSL unless
+        the original URL explicitly asked for `sslmode=disable`, since that's the
+        overwhelmingly common requirement for managed Postgres in production.
+        """
+        original = make_url(self.database_url if "://" in self.database_url else "postgresql://" + self.database_url)
+        sslmode = dict(original.query).get("sslmode")
+        if sslmode == "disable":
+            return {}
+        if sslmode in (None, "") and original.host in ("localhost", "127.0.0.1", "postgres", "db"):
+            # Local/dev/docker-compose Postgres typically has no TLS listener at all.
+            return {}
+        return {"ssl": True}
 
 
 @lru_cache

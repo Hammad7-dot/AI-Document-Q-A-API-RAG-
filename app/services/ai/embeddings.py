@@ -1,6 +1,7 @@
 """Embedding provider abstraction (OpenAI default, Ollama optional)."""
 from abc import ABC, abstractmethod
 
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -36,6 +37,22 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         return await self._client.aembed_query(text)
 
 
+class GoogleEmbeddingProvider(EmbeddingProvider):
+    def __init__(self) -> None:
+        self._client = GoogleGenerativeAIEmbeddings(
+            model=settings.google_embedding_model,
+            google_api_key=settings.google_api_key or "not-set",
+        )
+
+    @retry(stop=stop_after_attempt(6), wait=wait_exponential(multiplier=2, min=2, max=60))
+    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return await self._client.aembed_documents(texts)
+
+    @retry(stop=stop_after_attempt(6), wait=wait_exponential(multiplier=2, min=2, max=60))
+    async def embed_query(self, text: str) -> list[float]:
+        return await self._client.aembed_query(text)
+
+
 class OllamaEmbeddingProvider(EmbeddingProvider):
     def __init__(self) -> None:
         self._client = OllamaEmbeddings(
@@ -53,4 +70,6 @@ def get_embedding_provider() -> EmbeddingProvider:
     """Factory returning the configured embedding provider."""
     if settings.embedding_provider == "ollama":
         return OllamaEmbeddingProvider()
+    if settings.embedding_provider == "google":
+        return GoogleEmbeddingProvider()
     return OpenAIEmbeddingProvider()

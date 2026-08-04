@@ -29,12 +29,18 @@ class Settings(BaseSettings):
     redis_ttl_seconds: int = 900
 
     # AI Providers
-    llm_provider: str = "openai"
-    embedding_provider: str = "openai"
+    llm_provider: str = "openai"  # openai | groq | ollama
+    embedding_provider: str = "openai"  # openai | google | ollama
 
     openai_api_key: str = ""
     openai_chat_model: str = "gpt-4.1"
     openai_embedding_model: str = "text-embedding-3-small"
+
+    groq_api_key: str = ""
+    groq_chat_model: str = "llama-3.3-70b-versatile"
+
+    google_api_key: str = ""
+    google_embedding_model: str = "models/text-embedding-004"
 
     ollama_base_url: str = "http://ollama:11434"
     ollama_chat_model: str = "llama3"

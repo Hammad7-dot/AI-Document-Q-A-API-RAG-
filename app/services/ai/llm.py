@@ -2,6 +2,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 
+from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -59,6 +60,27 @@ class OpenAILLMProvider(LLMProvider):
                 yield chunk.content
 
 
+class GroqLLMProvider(LLMProvider):
+    def __init__(self) -> None:
+        self._client = ChatGroq(
+            model=settings.groq_chat_model,
+            api_key=settings.groq_api_key or "not-set",
+            temperature=settings.llm_temperature,
+        )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8))
+    async def generate(self, question: str, context: str) -> str:
+        messages = self._build_messages(question, context)
+        response = await self._client.ainvoke(messages)
+        return response.content
+
+    async def stream(self, question: str, context: str) -> AsyncIterator[str]:
+        messages = self._build_messages(question, context)
+        async for chunk in self._client.astream(messages):
+            if chunk.content:
+                yield chunk.content
+
+
 class OllamaLLMProvider(LLMProvider):
     def __init__(self) -> None:
         self._client = ChatOllama(
@@ -83,4 +105,6 @@ def get_llm_provider() -> LLMProvider:
     """Factory returning the configured LLM provider."""
     if settings.llm_provider == "ollama":
         return OllamaLLMProvider()
+    if settings.llm_provider == "groq":
+        return GroqLLMProvider()
     return OpenAILLMProvider()

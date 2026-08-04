@@ -59,6 +59,26 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
+    @property
+    def async_database_url(self) -> str:
+        """Return database_url guaranteed to use the asyncpg driver.
+
+        Most managed Postgres providers (Render, Railway, Supabase, Neon, Heroku, ...)
+        hand out a plain `postgresql://` or `postgres://` connection string. SQLAlchemy
+        interprets a driverless `postgresql://` scheme as the *sync* psycopg2 dialect,
+        which this project does not depend on and does not install, causing
+        `ModuleNotFoundError: No module named 'psycopg2'` at startup even though the
+        async engine (asyncpg) is fully configured. Normalize the scheme here so any
+        plain Postgres URL works without the operator needing to remember to add
+        `+asyncpg` by hand.
+        """
+        url = self.database_url
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://"):]
+        if url.startswith("postgresql://"):
+            url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+        return url
+
 
 @lru_cache
 def get_settings() -> Settings:

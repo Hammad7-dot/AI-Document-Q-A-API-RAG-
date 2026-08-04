@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # AI Providers
     llm_provider: str = "openai"  # openai | groq | ollama
-    embedding_provider: str = "openai"  # openai | google | ollama
+    embedding_provider: str = "openai"  # openai | google | cohere | ollama
 
     openai_api_key: str = ""
     openai_chat_model: str = "gpt-4.1"
@@ -41,6 +41,9 @@ class Settings(BaseSettings):
 
     google_api_key: str = ""
     google_embedding_model: str = "models/embedding-001"
+
+    cohere_api_key: str = ""
+    cohere_embedding_model: str = "embed-english-v3.0"
 
     ollama_base_url: str = "http://ollama:11434"
     ollama_chat_model: str = "llama3"

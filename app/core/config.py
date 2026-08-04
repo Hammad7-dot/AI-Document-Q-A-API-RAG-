@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     groq_chat_model: str = "llama-3.3-70b-versatile"
 
     google_api_key: str = ""
-    google_embedding_model: str = "models/text-embedding-004"
+    google_embedding_model: str = "models/embedding-001"
 
     ollama_base_url: str = "http://ollama:11434"
     ollama_chat_model: str = "llama3"

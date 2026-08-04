@@ -38,7 +38,9 @@ class Message(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     chat_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("chats.id", ondelete="CASCADE"), index=True, nullable=False
     )
-    role: Mapped[MessageRole] = mapped_column(Enum(MessageRole, name="message_role"), nullable=False)
+    role: Mapped[MessageRole] = mapped_column(
+        Enum(MessageRole, name="message_role", values_callable=lambda e: [m.value for m in e]), nullable=False
+    )
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
     chat: Mapped["Chat"] = relationship(back_populates="messages")

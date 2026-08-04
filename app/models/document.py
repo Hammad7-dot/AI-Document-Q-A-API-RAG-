@@ -30,7 +30,7 @@ class Document(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     content_type: Mapped[str] = mapped_column(String(100), nullable=False, default="application/pdf")
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[DocumentStatus] = mapped_column(
-        Enum(DocumentStatus, name="document_status"),
+        Enum(DocumentStatus, name="document_status", values_callable=lambda e: [m.value for m in e]),
         default=DocumentStatus.UPLOADED,
         nullable=False,
     )

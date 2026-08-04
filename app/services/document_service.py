@@ -67,6 +67,7 @@ class DocumentService:
             await self._session.commit()
             raise
 
+        await self._session.refresh(document)
         return document
 
     async def _process_document(self, document: Document) -> None:

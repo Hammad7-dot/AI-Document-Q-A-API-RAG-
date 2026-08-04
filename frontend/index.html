@@ -26,7 +26,7 @@
   .brand span{color:var(--accent);}
   .top-right{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.06em;}
   #apiBaseWrap{display:flex;align-items:center;gap:6px;}
-  #apiBaseWrap input{font-family:var(--mono);font-size:12px;border:1px solid var(--line);background:var(--panel);padding:4px 6px;border-radius:4px;width:220px;}
+  #apiBaseWrap input{font-family:var(--mono);font-size:12px;border:1px solid var(--line);background:var(--panel);padding:4px 6px;border-radius:4px;width:340px;}
   .pill{padding:3px 9px;border-radius:20px;border:1px solid var(--line);background:var(--panel);}
   .pill.ok{color:var(--accent);border-color:var(--accent);}
   .pill.bad{color:var(--warn);border-color:var(--warn);}
@@ -197,13 +197,40 @@
 
   async function checkHealth(){
     const pill = $('healthPill');
+    const base = state.apiBase;
+    if (!base) {
+      pill.textContent = 'No API URL set'; pill.className = 'pill bad'; pill.title = '';
+      return;
+    }
+    if (!/^https?:\/\//i.test(base)) {
+      pill.textContent = 'API URL needs http(s)://'; pill.className = 'pill bad';
+      pill.title = 'Add the scheme, e.g. https://' + base;
+      return;
+    }
     try {
-      const r = await fetch(state.apiBase + '/health');
+      const r = await fetch(base + '/health');
+      if (!r.ok) {
+        pill.textContent = 'API error ' + r.status; pill.className = 'pill bad';
+        pill.title = 'Reached the server but it returned HTTP ' + r.status + '. Check the backend logs.';
+        return;
+      }
       const j = await r.json();
       pill.textContent = j.status === 'ok' ? 'API online' : 'degraded';
       pill.className = 'pill ' + (j.status === 'ok' ? 'ok' : 'bad');
+      pill.title = j.status === 'ok' ? '' : JSON.stringify(j);
     } catch(e){
+      // A raw fetch TypeError here almost always means one of:
+      // (1) DNS/host doesn't resolve or server isn't listening (network failure)
+      // (2) the server is up but CORS_ORIGINS on the backend doesn't include this
+      //     page's origin, so the browser blocks the response before JS ever sees it
+      // (3) this page is https:// but the API URL is http:// (mixed content blocked)
+      // The browser deliberately hides which of these it is from JS for security
+      // reasons - open devtools > Console/Network for the real reason.
       pill.textContent = 'API unreachable'; pill.className = 'pill bad';
+      pill.title = 'Could not reach ' + base + '/health. Common causes: backend not running, ' +
+        'CORS_ORIGINS on the backend does not include ' + window.location.origin +
+        ', or an http/https mismatch. Check the browser console (F12) for the exact error.';
+      console.error('Docket health check failed for', base + '/health', e);
     }
   }
 

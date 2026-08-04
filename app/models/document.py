@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
-EMBEDDING_DIM = 1536  # text-embedding-3-small dimension
+EMBEDDING_DIM = 1024  # Cohere embed-english-v3.0 dimension; must match EMBEDDING_PROVIDER
 
 
 class DocumentStatus(str, enum.Enum):

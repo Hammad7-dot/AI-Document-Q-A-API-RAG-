@@ -59,10 +59,12 @@ class DocumentService:
         )
         await self._session.commit()
 
+        document_id = document.id
         try:
             await self._process_document(document)
         except Exception as exc:  # noqa: BLE001
-            logger.error("document_processing_failed", document_id=str(document.id), error=str(exc))
+            logger.error("document_processing_failed", document_id=str(document_id), error=str(exc))
+            await self._session.rollback()
             await self._repo.update_status(document, DocumentStatus.FAILED, str(exc))
             await self._session.commit()
             raise

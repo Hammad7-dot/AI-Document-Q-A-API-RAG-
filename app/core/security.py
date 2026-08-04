@@ -13,15 +13,26 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 TokenType = Literal["access", "refresh"]
 
+# bcrypt silently truncates at 72 bytes; passlib now raises instead of truncating,
+# so we truncate ourselves to preserve the previous (documented bcrypt) behavior.
+_BCRYPT_MAX_BYTES = 72
+
+
+def _truncate_to_bcrypt_limit(password: str) -> str:
+    encoded = password.encode("utf-8")
+    if len(encoded) <= _BCRYPT_MAX_BYTES:
+        return password
+    return encoded[:_BCRYPT_MAX_BYTES].decode("utf-8", errors="ignore")
+
 
 def hash_password(password: str) -> str:
     """Hash a plaintext password using bcrypt."""
-    return pwd_context.hash(password)
+    return pwd_context.hash(_truncate_to_bcrypt_limit(password))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plaintext password against a bcrypt hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    return pwd_context.verify(_truncate_to_bcrypt_limit(plain_password), hashed_password)
 
 
 def _create_token(subject: UUID, token_type: TokenType, expires_delta: timedelta) -> str:

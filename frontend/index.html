@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Docket — Ask your documents</title>
+<style>
+  :root{
+    --ink:#1b1b18;
+    --paper:#f6f3ec;
+    --panel:#ffffff;
+    --line:#e3ddd0;
+    --accent:#2f5d50;
+    --accent-soft:#e4ede9;
+    --warn:#a63d2f;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --serif: "Source Serif Pro", Georgia, "Times New Roman", serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);}
+  a{color:inherit;}
+  .app{max-width:1100px;margin:0 auto;padding:28px 20px 80px;}
+  header.top{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:26px;flex-wrap:wrap;gap:10px;}
+  .brand{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:-0.01em;}
+  .brand span{color:var(--accent);}
+  .top-right{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.06em;}
+  #apiBaseWrap{display:flex;align-items:center;gap:6px;}
+  #apiBaseWrap input{font-family:var(--mono);font-size:12px;border:1px solid var(--line);background:var(--panel);padding:4px 6px;border-radius:4px;width:220px;}
+  .pill{padding:3px 9px;border-radius:20px;border:1px solid var(--line);background:var(--panel);}
+  .pill.ok{color:var(--accent);border-color:var(--accent);}
+  .pill.bad{color:var(--warn);border-color:var(--warn);}
+
+  .auth-card{max-width:420px;margin:60px auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:32px;}
+  .auth-card h1{font-family:var(--serif);font-size:22px;margin:0 0 4px;}
+  .auth-card p.sub{color:#77716a;font-size:14px;margin:0 0 22px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#77716a;margin-bottom:5px;}
+  .field input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:#fdfcf9;}
+  .field input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .btn{cursor:pointer;border:none;border-radius:6px;padding:10px 16px;font-size:14px;font-weight:600;font-family:var(--sans);}
+  .btn-primary{background:var(--ink);color:var(--paper);width:100%;}
+  .btn-primary:hover{background:var(--accent);}
+  .btn-link{background:none;color:var(--accent);text-decoration:underline;padding:0;font-weight:500;}
+  .error-msg{color:var(--warn);font-size:13px;margin-top:10px;}
+  .toggle-row{text-align:center;margin-top:16px;font-size:13px;color:#77716a;}
+
+  .layout{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start;}
+  @media (max-width:820px){.layout{grid-template-columns:1fr;}}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;}
+  .panel h2{font-family:var(--serif);font-size:15px;margin:0 0 12px;display:flex;align-items:center;justify-content:space-between;}
+  .drop{border:1.5px dashed var(--line);border-radius:8px;padding:18px;text-align:center;font-size:13px;color:#77716a;cursor:pointer;transition:.15s;}
+  .drop.hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+  .drop input{display:none;}
+  .doc-list{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;}
+  .doc-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid transparent;}
+  .doc-item:hover{background:var(--accent-soft);}
+  .doc-item.active{background:var(--accent-soft);border-color:var(--accent);font-weight:600;}
+  .doc-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .doc-status{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:#a29c92;flex-shrink:0;}
+  .doc-del{background:none;border:none;color:#c2bcb0;cursor:pointer;font-size:14px;flex-shrink:0;}
+  .doc-del:hover{color:var(--warn);}
+  .empty{color:#a29c92;font-size:13px;padding:8px 2px;}
+
+  .chat-panel{display:flex;flex-direction:column;height:72vh;min-height:460px;}
+  .chat-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .chat-header .doc-tag{font-family:var(--mono);font-size:12px;color:var(--accent);background:var(--accent-soft);padding:3px 9px;border-radius:20px;}
+  .messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding:6px 4px;}
+  .msg{max-width:78%;padding:10px 14px;border-radius:10px;font-size:14px;line-height:1.5;white-space:pre-wrap;}
+  .msg.user{align-self:flex-end;background:var(--ink);color:var(--paper);border-bottom-right-radius:2px;}
+  .msg.assistant{align-self:flex-start;background:var(--accent-soft);color:var(--ink);border-bottom-left-radius:2px;}
+  .msg.pending{opacity:.6;}
+  .composer{display:flex;gap:8px;margin-top:12px;}
+  .composer input{flex:1;padding:12px 14px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fdfcf9;}
+  .composer input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .composer button{background:var(--ink);color:var(--paper);border:none;border-radius:8px;padding:0 20px;font-weight:600;cursor:pointer;}
+  .composer button:disabled{opacity:.4;cursor:not-allowed;}
+  .empty-chat{flex:1;display:flex;align-items:center;justify-content:center;color:#a29c92;font-size:14px;text-align:center;padding:20px;}
+  .hidden{display:none !important;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:6px;font-size:13px;z-index:50;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">Dock<span>et</span></div>
+    <div class="top-right">
+      <div id="apiBaseWrap">
+        <label for="apiBase">API</label>
+        <input id="apiBase" type="text" value="http://localhost:8000" />
+      </div>
+      <span id="healthPill" class="pill">checking…</span>
+      <button id="logoutBtn" class="btn btn-link hidden">Sign out</button>
+    </div>
+  </header>
+
+  <!-- AUTH VIEW -->
+  <div id="authView" class="auth-card">
+    <h1 id="authTitle">Sign in</h1>
+    <p class="sub" id="authSub">Ask questions, get answers grounded in your own PDFs.</p>
+    <div id="authError" class="error-msg hidden"></div>
+    <div class="field" id="emailField">
+      <label>Email</label>
+      <input id="emailInput" type="email" autocomplete="email" placeholder="you@example.com" />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="passwordInput" type="password" autocomplete="current-password" placeholder="••••••••" />
+    </div>
+    <button class="btn btn-primary" id="authSubmit">Sign in</button>
+    <div class="toggle-row">
+      <span id="toggleText">New here?</span>
+      <button class="btn btn-link" id="toggleAuth">Create an account</button>
+    </div>
+  </div>
+
+  <!-- APP VIEW -->
+  <div id="mainView" class="layout hidden">
+    <div class="panel">
+      <h2>Documents</h2>
+      <label class="drop" id="dropZone">
+        <div id="dropLabel">Drop a PDF here or click to upload<br/><span style="font-size:11px">max 25MB</span></div>
+        <input id="fileInput" type="file" accept="application/pdf" />
+      </label>
+      <ul class="doc-list" id="docList"><li class="empty">No documents yet.</li></ul>
+    </div>
+
+    <div class="panel chat-panel">
+      <div class="chat-header">
+        <h2 style="margin:0;">Ask</h2>
+        <span class="doc-tag hidden" id="activeDocTag"></span>
+      </div>
+      <div class="messages" id="messages">
+        <div class="empty-chat" id="emptyChat">Select a document on the left, then ask it something.</div>
+      </div>
+      <div class="composer">
+        <input id="questionInput" type="text" placeholder="Ask a question about the selected document…" disabled />
+        <button id="askBtn" disabled>Ask</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const state = {
+    apiBase: localStorage.getItem('docket_api') || 'http://localhost:8000',
+    access: null, refresh: null,
+    mode: 'login',
+    documents: [],
+    activeDocId: null,
+    chatId: null,
+  };
+  $('apiBase').value = state.apiBase;
+
+  function toast(msg){
+    const t = $('toast'); t.textContent = msg; t.classList.remove('hidden');
+    clearTimeout(t._h); t._h = setTimeout(()=>t.classList.add('hidden'), 3200);
+  }
+
+  async function api(path, opts = {}, auth = true) {
+    const headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
+    if (auth && state.access) headers['Authorization'] = 'Bearer ' + state.access;
+    const res = await fetch(state.apiBase + path, Object.assign({}, opts, { headers }));
+    if (res.status === 401 && auth && state.refresh) {
+      const refreshed = await tryRefresh();
+      if (refreshed) return api(path, opts, auth);
+    }
+    if (!res.ok) {
+      let detail = res.statusText;
+      try { const j = await res.json(); detail = j.detail || detail; } catch(e){}
+      throw new Error(detail);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  }
+
+  async function tryRefresh(){
+    try {
+      const data = await api('/auth/refresh', {method:'POST', body: JSON.stringify({refresh_token: state.refresh})}, false);
+      state.access = data.access_token; state.refresh = data.refresh_token;
+      persistTokens();
+      return true;
+    } catch(e){ signOut(); return false; }
+  }
+
+  function persistTokens(){
+    localStorage.setItem('docket_access', state.access || '');
+    localStorage.setItem('docket_refresh', state.refresh || '');
+  }
+
+  async function checkHealth(){
+    const pill = $('healthPill');
+    try {
+      const r = await fetch(state.apiBase + '/health');
+      const j = await r.json();
+      pill.textContent = j.status === 'ok' ? 'API online' : 'degraded';
+      pill.className = 'pill ' + (j.status === 'ok' ? 'ok' : 'bad');
+    } catch(e){
+      pill.textContent = 'API unreachable'; pill.className = 'pill bad';
+    }
+  }
+
+  $('apiBase').addEventListener('change', () => {
+    state.apiBase = $('apiBase').value.replace(/\/$/, '');
+    localStorage.setItem('docket_api', state.apiBase);
+    checkHealth();
+  });
+
+  // ---- Auth ----
+  function setMode(mode){
+    state.mode = mode;
+    $('authTitle').textContent = mode === 'login' ? 'Sign in' : 'Create an account';
+    $('authSubmit').textContent = mode === 'login' ? 'Sign in' : 'Create account';
+    $('toggleText').textContent = mode === 'login' ? 'New here?' : 'Already have an account?';
+    $('toggleAuth').textContent = mode === 'login' ? 'Create an account' : 'Sign in';
+    $('authError').classList.add('hidden');
+  }
+  $('toggleAuth').addEventListener('click', () => setMode(state.mode === 'login' ? 'register' : 'login'));
+
+  $('authSubmit').addEventListener('click', async () => {
+    const email = $('emailInput').value.trim();
+    const password = $('passwordInput').value;
+    $('authError').classList.add('hidden');
+    if (!email || !password) { showAuthError('Enter an email and password.'); return; }
+    try {
+      if (state.mode === 'register') {
+        await api('/auth/register', {method:'POST', body: JSON.stringify({email, password})}, false);
+      }
+      const data = await api('/auth/login', {method:'POST', body: JSON.stringify({email, password})}, false);
+      state.access = data.access_token; state.refresh = data.refresh_token;
+      persistTokens();
+      await enterApp();
+    } catch(e){ showAuthError(e.message); }
+  });
+
+  function showAuthError(msg){ const el = $('authError'); el.textContent = msg; el.classList.remove('hidden'); }
+
+  $('logoutBtn').addEventListener('click', signOut);
+  function signOut(){
+    state.access = null; state.refresh = null; state.documents = []; state.activeDocId = null;
+    localStorage.removeItem('docket_access'); localStorage.removeItem('docket_refresh');
+    $('mainView').classList.add('hidden');
+    $('authView').classList.remove('hidden');
+    $('logoutBtn').classList.add('hidden');
+  }
+
+  async function enterApp(){
+    $('authView').classList.add('hidden');
+    $('mainView').classList.remove('hidden');
+    $('logoutBtn').classList.remove('hidden');
+    await loadDocuments();
+  }
+
+  // ---- Documents ----
+  async function loadDocuments(){
+    try {
+      const data = await api('/documents?page=1&page_size=100');
+      state.documents = data.items || [];
+      renderDocs();
+    } catch(e){ toast('Could not load documents: ' + e.message); }
+  }
+
+  function renderDocs(){
+    const list = $('docList');
+    if (!state.documents.length) { list.innerHTML = '<li class="empty">No documents yet.</li>'; return; }
+    list.innerHTML = '';
+    state.documents.forEach(doc => {
+      const li = document.createElement('li');
+      li.className = 'doc-item' + (doc.id === state.activeDocId ? ' active' : '');
+      li.innerHTML = `<span class="doc-name" title="${escapeHtml(doc.filename||doc.name||'document')}">${escapeHtml(doc.filename||doc.name||'document')}</span>
+        <span class="doc-status">${escapeHtml(doc.status||'')}</span>
+        <button class="doc-del" title="Delete">✕</button>`;
+      li.addEventListener('click', (e) => {
+        if (e.target.classList.contains('doc-del')) return;
+        selectDoc(doc);
+      });
+      li.querySelector('.doc-del').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm('Delete this document?')) return;
+        try { await api(`/documents/${doc.id}`, {method:'DELETE'}); state.documents = state.documents.filter(d=>d.id!==doc.id); if(state.activeDocId===doc.id){state.activeDocId=null; state.chatId=null; resetChat();} renderDocs(); }
+        catch(err){ toast('Delete failed: '+err.message); }
+      });
+      list.appendChild(li);
+    });
+  }
+
+  function selectDoc(doc){
+    state.activeDocId = doc.id;
+    state.chatId = null;
+    $('activeDocTag').textContent = doc.filename || doc.name || 'document';
+    $('activeDocTag').classList.remove('hidden');
+    $('questionInput').disabled = false;
+    $('askBtn').disabled = false;
+    resetChat();
+    renderDocs();
+  }
+
+  function resetChat(){
+    $('messages').innerHTML = '';
+    $('emptyChat').classList.remove('hidden');
+    if (state.activeDocId) $('emptyChat').classList.add('hidden');
+    else { $('messages').innerHTML = '<div class="empty-chat" id="emptyChat">Select a document on the left, then ask it something.</div>'; }
+  }
+
+  // Upload
+  const dropZone = $('dropZone'), fileInput = $('fileInput');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('hover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('hover');
+    if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => { if (e.target.files.length) uploadFile(e.target.files[0]); });
+
+  async function uploadFile(file){
+    if (file.type !== 'application/pdf') { toast('Only PDF files are supported.'); return; }
+    if (file.size > 25 * 1024 * 1024) { toast('File exceeds the 25MB limit.'); return; }
+    $('dropLabel').textContent = 'Uploading ' + file.name + '…';
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const headers = {};
+      if (state.access) headers['Authorization'] = 'Bearer ' + state.access;
+      const res = await fetch(state.apiBase + '/documents/upload', { method: 'POST', headers, body: form });
+      if (!res.ok) { const j = await res.json().catch(()=>({})); throw new Error(j.detail || res.statusText); }
+      const doc = await res.json();
+      state.documents.unshift(doc);
+      renderDocs();
+      toast('Uploaded ' + file.name);
+    } catch(e){ toast('Upload failed: ' + e.message); }
+    finally { $('dropLabel').innerHTML = 'Drop a PDF here or click to upload<br/><span style="font-size:11px">max 25MB</span>'; fileInput.value=''; }
+  }
+
+  // ---- Chat ----
+  function addMessage(role, text, pending=false){
+    $('emptyChat')?.classList.add('hidden');
+    const div = document.createElement('div');
+    div.className = 'msg ' + role + (pending ? ' pending' : '');
+    div.textContent = text;
+    $('messages').appendChild(div);
+    $('messages').scrollTop = $('messages').scrollHeight;
+    return div;
+  }
+
+  async function ask(){
+    const input = $('questionInput');
+    const question = input.value.trim();
+    if (!question || !state.activeDocId) return;
+    input.value = '';
+    $('askBtn').disabled = true;
+    addMessage('user', question);
+    const pendingEl = addMessage('assistant', 'Thinking…', true);
+    try {
+      const data = await api('/chat', {
+        method: 'POST',
+        body: JSON.stringify({ document_id: state.activeDocId, question, chat_id: state.chatId, stream: false })
+      });
+      state.chatId = data.chat_id || state.chatId;
+      pendingEl.textContent = data.answer || data.message || JSON.stringify(data);
+      pendingEl.classList.remove('pending');
+    } catch(e){
+      pendingEl.textContent = 'Error: ' + e.message;
+      pendingEl.classList.remove('pending');
+    } finally {
+      $('askBtn').disabled = false;
+    }
+  }
+  $('askBtn').addEventListener('click', ask);
+  $('questionInput').addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---- Boot ----
+  (async function boot(){
+    checkHealth();
+    setInterval(checkHealth, 20000);
+    const a = localStorage.getItem('docket_access');
+    const r = localStorage.getItem('docket_refresh');
+    if (a && r) {
+      state.access = a; state.refresh = r;
+      try { await api('/users/me'); await enterApp(); }
+      catch(e){ signOut(); }
+    }
+  })();
+})();
+</script>
+</body>
+</html>

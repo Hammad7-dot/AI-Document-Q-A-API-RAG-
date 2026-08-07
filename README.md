@@ -2,6 +2,12 @@
 
 A production-ready Retrieval Augmented Generation (RAG) backend built with FastAPI. Upload PDF documents, ask questions about them, and get context-aware answers with cited sources.
 
+## Screenshot
+
+![Docket frontend showing a document uploaded and a question answered with cited sources](docs/screenshot.png)
+
+`frontend/index.html` ("Docket") is a self-contained static frontend — sign in/register, upload a PDF, and chat with it — that talks to this API. Open it directly in a browser (it points at the deployed API by default; edit `API_BASE` near the top of the `<script>` to target a local instance).
+
 ## Stack
 
 - **API**: FastAPI (async), Python 3.12+

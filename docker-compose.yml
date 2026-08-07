@@ -12,6 +12,8 @@ services:
     volumes:
       - documents_data:/app/storage/documents
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       ollama:
@@ -19,6 +21,24 @@ services:
     command: >
       sh -c "alembic upgrade head &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rag_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ragdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -53,6 +73,7 @@ services:
       retries: 5
 
 volumes:
+  postgres_data:
   redis_data:
   documents_data:
   ollama_data:

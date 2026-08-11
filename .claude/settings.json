@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose *)",
+      "Bash(powershell -Command \"Get-Process 'Docker Desktop' -ErrorAction SilentlyContinue\")",
+      "Bash(powershell -Command \"Test-Path 'C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe'\")",
+      "Bash(docker --version)",
+      "Bash(docker context *)",
+      "Bash(docker info *)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8000/app/)",
+      "Bash(docker volume *)",
+      "Bash(curl -s -o /dev/null -w \"app page: %{http_code}\\\\n\" http://localhost:8000/app/)",
+      "Bash(docker exec *)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec rag_postgres psql -U postgres -d ragdb -c \"select * from alembic_version;\")",
+      "Read(//d/python/ai-document-qa-rag-api/**)",
+      "Bash(git -C d:/python/ai-document-qa-rag-api check-ignore -v build/.env)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__fill_form",
+      "mcp__chrome-devtools__click",
+      "mcp__chrome-devtools__wait_for",
+      "Bash(python3 -c ' *)",
+      "Bash(python \"C:\\\\Users\\\\dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--python-ai-document-qa-rag-api-build\\\\873e96a5-08e4-4ae8-87f2-31bdea07ce53\\\\scratchpad\\\\make_pdf.py\")",
+      "Bash(tasklist)",
+      "Bash(ls \"/c/Program Files/Docker/Docker/Docker Desktop.exe\" 2>&1 && echo FOUND)",
+      "Read(//c/Program Files/Docker/Docker/**)",
+      "Read(//c/Program Files/Docker/**)",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\dell\\\\AppData\\\\Local\\\\Programs\\\\DockerDesktop\\\\Docker Desktop.exe\")",
+      "Bash(docker rm *)",
+      "Bash(docker stop *)",
+      "Bash(echo \"exit:$?\")"
+    ],
+    "additionalDirectories": [
+      "d:\\python\\ai-document-qa-rag-api"
+    ]
+  }
+}

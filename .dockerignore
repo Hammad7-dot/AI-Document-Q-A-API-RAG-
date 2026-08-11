@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+__pycache__
+*.pyc
+.pytest_cache
+.venv
+venv
+storage/
+*.md
+tests/
+.specs/

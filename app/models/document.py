@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
-EMBEDDING_DIM = 768  # Ollama nomic-embed-text dimension; must match EMBEDDING_PROVIDER
+EMBEDDING_DIM = 1024  # Ollama nomic-embed-text dimension; must match EMBEDDING_PROVIDER
 
 
 class DocumentStatus(str, enum.Enum):

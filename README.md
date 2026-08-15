@@ -4,7 +4,7 @@ A production-ready Retrieval Augmented Generation (RAG) backend built with FastA
 
 ## Screenshot
 
-![Docket frontend showing a document uploaded and a question answered with cited sources](docs/screenshot.png)
+<img width="720" height="405" alt="Docket frontend showing a document uploaded and a question answered with cited sources" src="https://github.com/user-attachments/assets/c57c4312-04b8-40a8-80e1-11c851e7478f" />
 
 `frontend/index.html` ("Docket") is a self-contained static frontend — sign in/register, upload a PDF, and chat with it — that talks to this API. Open it directly in a browser (it points at the deployed API by default; edit `API_BASE` near the top of the `<script>` to target a local instance).
 

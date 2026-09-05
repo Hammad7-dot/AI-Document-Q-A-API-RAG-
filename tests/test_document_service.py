@@ -171,6 +171,7 @@ async def test_delete_document_removes_record_cache_and_file(mock_session, tmp_p
 
 async def test_delete_document_skips_missing_file_on_disk(mock_session, tmp_path):
     service = DocumentService(mock_session, embedding_provider=AsyncMock(), cache=AsyncMock())
+    service._cache.document_meta_key = MagicMock(return_value="doc:meta:missing")
     missing_path = str(tmp_path / "already-gone.pdf")
     document = MagicMock(storage_path=missing_path)
     service.get_document = AsyncMock(return_value=document)

@@ -29,11 +29,9 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
             api_key=settings.openai_api_key or "not-set",
         )
 
-    @retry(stop=stop_after_attempt(6), wait=wait_exponential(multiplier=2, min=2, max=60))
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return await self._client.aembed_documents(texts)
 
-    @retry(stop=stop_after_attempt(6), wait=wait_exponential(multiplier=2, min=2, max=60))
     async def embed_query(self, text: str) -> list[float]:
         return await self._client.aembed_query(text)
 
@@ -61,11 +59,9 @@ class CohereEmbeddingProvider(EmbeddingProvider):
             cohere_api_key=settings.cohere_api_key or "not-set",
         )
 
-    @retry(stop=stop_after_attempt(6), wait=wait_exponential(multiplier=2, min=2, max=60))
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return await self._client.aembed_documents(texts)
 
-    @retry(stop=stop_after_attempt(6), wait=wait_exponential(multiplier=2, min=2, max=60))
     async def embed_query(self, text: str) -> list[float]:
         return await self._client.aembed_query(text)
 
